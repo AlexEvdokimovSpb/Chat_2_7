@@ -36,6 +36,7 @@ public class ClientHandler {
                                 nickname = newNick;
                                 sendMsg("/authok " + nickname);
                                 server.subscribe(this);
+                                server.subscribeNickname(nickname, this);
                                 System.out.println("Клиент " + nickname + " подключился");
                                 break;
                             } else {
@@ -53,13 +54,30 @@ public class ClientHandler {
                             break;
                         }
 
-                        server.broadcastMsg(this, str);
+
+                        if (str.split(" ", 2)[0].equals("/w")) { // если есть префикс /w
+                            String addressee = str.split(" ", 3)[1]; // сохраняем "кому"
+                            String message = str.split(" ", 3)[2]; // сохраняем сообщение
+
+                            if (server.thisNicknameInChat(addressee)) {
+                                out.writeUTF(nickname + ": " + message); // дублируем сообщение отправителю
+                                server.addressMsg(this, addressee, message); // отправляем по нику
+                            } else {
+                                out.writeUTF("Пользователя: " +addressee+ " нет в чате"); // если получателя нет
+                            }
+
+
+                        } else { // иначе отправляем всем
+                            server.broadcastMsg(this, str);
+                        }
+
                     }
                 } catch (IOException e) {
                     e.printStackTrace();
                 } finally {
                     System.out.println("Клиент отключился");
                     server.unsubscribe(this);
+                    server.unsubscribeNickname(nickname);
                     try {
                         socket.close();
                     } catch (IOException e) {
@@ -84,4 +102,6 @@ public class ClientHandler {
     public String getNickname() {
         return nickname;
     }
+
+
 }
